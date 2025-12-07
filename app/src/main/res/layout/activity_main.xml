@@ -1,10 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#3A6EA5">
 
-    <com.example.soarandsorcery.GameView
-        android:id="@+id/gameView"
+
+<!--    &lt;!&ndash; Shared background &ndash;&gt;-->
+<!--    <ImageView-->
+<!--        android:id="@+id/bgImage"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        android:scaleType="centerCrop"-->
+<!--        android:src="@drawable/background" />-->
+
+    <!-- START SCREEN -->
+    <RelativeLayout
+        android:id="@+id/startScreen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KNIGHT SKIES"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="40dp"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF" />
+
+
+        <Button
+            android:id="@+id/playButton"
+            android:text="PLAY"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true" />
+
+        <ImageButton
+            android:id="@+id/leftButton"
+            android:src="@android:drawable/ic_media_previous"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_margin="20dp"
+            android:background="@android:color/transparent"
+            android:layout_width="70dp"
+            android:layout_height="70dp" />
+
+        <ImageButton
+            android:id="@+id/rightButton"
+            android:src="@android:drawable/ic_media_next"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="true"
+            android:layout_margin="20dp"
+            android:background="@android:color/transparent"
+            android:layout_width="70dp"
+            android:layout_height="70dp" />
+    </RelativeLayout>
+
+    <!-- GAME AREA -->
+    <FrameLayout
+        android:id="@+id/gameContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
