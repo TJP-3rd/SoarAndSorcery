@@ -7,8 +7,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Handler;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import java.util.Random;
 
@@ -19,10 +21,10 @@ public class GameView extends View {
     private int castleWidth, castleHeight;
     private int canvasWidth, canvasHeight;
     private int gap = 400;
-    private int gravity = 3;          // slower falling
+    private int gravity = 3;
     private int velocity = 0;
-    private int castleVelocity = 8;   // slower tubes
-    private int delay = 40;           // slower frame refresh
+    private int castleVelocity = 8;
+    private int delay = 40;
 
     private int[] tubeX = new int[2];
     private int[] tubeY = new int[2];
@@ -44,23 +46,25 @@ public class GameView extends View {
 
     private int tubeSpacing;
 
-    // Game state
     private boolean gameRunning = false;
     private boolean countdownRunning = false;
     private int countdownValue = 3;
     private Paint countdownPaint = new Paint();
     private Runnable onGameOverCallback;
 
-    // Ensure countdown waits for view
     private boolean viewReady = false;
 
     public GameView(Context context) {
         super(context);
 
-        knight = BitmapFactory.decodeResource(getResources(), R.drawable.flappybirdup);
-        topTube = BitmapFactory.decodeResource(getResources(), R.drawable.toptube);
-        bottomTube = BitmapFactory.decodeResource(getResources(), R.drawable.bottomtube);
-        coin = BitmapFactory.decodeResource(getResources(), R.drawable.coin);
+        try {
+            knight = BitmapFactory.decodeResource(getResources(), R.drawable.flappybirdup);
+            topTube = BitmapFactory.decodeResource(getResources(), R.drawable.toptube);
+            bottomTube = BitmapFactory.decodeResource(getResources(), R.drawable.bottomtube);
+            coin = BitmapFactory.decodeResource(getResources(), R.drawable.coin);
+        } catch (Exception e) {
+            Log.e("GameView", "Error loading bitmaps", e);
+        }
 
         scorePaint = new Paint();
         scorePaint.setColor(Color.BLACK);
@@ -72,38 +76,59 @@ public class GameView extends View {
         countdownPaint.setTextAlign(Paint.Align.CENTER);
 
         runnable = this::invalidate;
+
+        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                if (!viewReady && getWidth() > 0 && getHeight() > 0) {
+                    canvasWidth = getWidth();
+                    canvasHeight = getHeight();
+                    viewReady = true;
+
+                    setupBitmaps();
+
+                    knightX = canvasWidth / 4;
+                    knightY = canvasHeight / 2;
+                    resetGame();
+
+                    getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                }
+            }
+        });
     }
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        canvasWidth = w;
-        canvasHeight = h;
+    private void setupBitmaps() {
+        try {
+            if (knight != null) {
+                int birdTargetWidth = canvasWidth / 10;
+                int birdTargetHeight = birdTargetWidth * knight.getHeight() / knight.getWidth();
+                knight = Bitmap.createScaledBitmap(knight, birdTargetWidth, birdTargetHeight, false);
+                knightWidth = knight.getWidth();
+                knightHeight = knight.getHeight();
+            }
 
-        int birdTargetWidth = canvasWidth / 10;
-        int birdTargetHeight = birdTargetWidth * knight.getHeight() / knight.getWidth();
-        knight = Bitmap.createScaledBitmap(knight, birdTargetWidth, birdTargetHeight, false);
-        knightWidth = knight.getWidth();
-        knightHeight = knight.getHeight();
+            if (topTube != null && bottomTube != null) {
+                int tubeTargetWidth = canvasWidth / 6;
+                int tubeTargetHeight = tubeTargetWidth * topTube.getHeight() / topTube.getWidth();
+                topTube = Bitmap.createScaledBitmap(topTube, tubeTargetWidth, tubeTargetHeight, false);
+                bottomTube = Bitmap.createScaledBitmap(bottomTube, tubeTargetWidth, tubeTargetHeight, false);
+                castleWidth = topTube.getWidth();
+                castleHeight = topTube.getHeight();
+            }
 
-        int tubeTargetWidth = canvasWidth / 6;
-        int tubeTargetHeight = tubeTargetWidth * topTube.getHeight() / topTube.getWidth();
-        topTube = Bitmap.createScaledBitmap(topTube, tubeTargetWidth, tubeTargetHeight, false);
-        bottomTube = Bitmap.createScaledBitmap(bottomTube, tubeTargetWidth, tubeTargetHeight, false);
-        castleWidth = topTube.getWidth();
-        castleHeight = topTube.getHeight();
+            if (coin != null) {
+                int coinTargetWidth = canvasWidth / 15;
+                int coinTargetHeight = coinTargetWidth * coin.getHeight() / coin.getWidth();
+                coin = Bitmap.createScaledBitmap(coin, coinTargetWidth, coinTargetHeight, false);
+                coinWidth = coin.getWidth();
+                coinHeight = coin.getHeight();
+            }
 
-        int coinTargetWidth = canvasWidth / 15;
-        int coinTargetHeight = coinTargetWidth * coin.getHeight() / coin.getWidth();
-        coin = Bitmap.createScaledBitmap(coin, coinTargetWidth, coinTargetHeight, false);
-        coinWidth = coin.getWidth();
-        coinHeight = coin.getHeight();
-
-        gap = canvasHeight / 3;
-        tubeSpacing = canvasWidth / 2 + castleWidth;
-
-        viewReady = true;
-        resetGame();
+            gap = canvasHeight / 3;
+            tubeSpacing = canvasWidth / 2 + castleWidth;
+        } catch (Exception e) {
+            Log.e("GameView", "Error scaling bitmaps", e);
+        }
     }
 
     public void resetGame() {
@@ -122,8 +147,8 @@ public class GameView extends View {
 
         gameRunning = false;
         countdownRunning = false;
-
         handler.removeCallbacks(countdownTick);
+
         invalidate();
     }
 
@@ -135,21 +160,20 @@ public class GameView extends View {
     public void startCountdown(Runnable onGameOver) {
         this.onGameOverCallback = onGameOver;
 
-        // Reset countdown and game state
+        if (!viewReady) {
+            post(() -> startCountdown(onGameOver));
+            return;
+        }
+
         countdownValue = 3;
         countdownRunning = true;
         gameRunning = false;
 
-        // Remove any previous callbacks
         handler.removeCallbacks(countdownTick);
+        handler.postDelayed(countdownTick, 1000);
 
-        // Post the countdown to run after the view is fully laid out
-        post(() -> handler.post(countdownTick));
-
-        // Force redraw
         invalidate();
     }
-
 
     private Runnable countdownTick = new Runnable() {
         @Override
@@ -157,29 +181,29 @@ public class GameView extends View {
             if (countdownValue > 0) {
                 countdownValue--;
                 invalidate();
-                handler.postDelayed(this, 1000);
-            } else {
-                countdownRunning = false;
-                gameRunning = true;
+
+                if (countdownValue > 0) {
+                    handler.postDelayed(this, 1000);
+                } else {
+                    countdownRunning = false;
+                    gameRunning = true;
+                }
             }
         }
     };
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (!viewReady || knight == null || topTube == null || bottomTube == null || coin == null) {
+            handler.postDelayed(runnable, delay);
+            return;
+        }
 
-        // ==== COUNTDOWN STATE ====
+        // Countdown state
         if (countdownRunning) {
-            // Draw tubes (frozen)
-            for (int i = 0; i < 2; i++) {
-                canvas.drawBitmap(topTube, tubeX[i], tubeY[i], paint);
-                canvas.drawBitmap(bottomTube, tubeX[i], tubeY[i] + castleHeight + gap, paint);
-            }
-
-            // Draw bird
+            drawTubes(canvas, false); // DRAW WITHOUT MOVING
             canvas.drawBitmap(knight, knightX, knightY, paint);
 
-            // Draw countdown text
             canvas.drawText(
                     countdownValue == 0 ? "GO!" : String.valueOf(countdownValue),
                     canvasWidth / 2f,
@@ -191,64 +215,27 @@ public class GameView extends View {
             return;
         }
 
-        // ==== PAUSED (menu) ====
+        // Paused/menu
         if (!gameRunning) {
             canvas.drawBitmap(knight, knightX, knightY, paint);
             handler.postDelayed(runnable, delay);
             return;
         }
 
-        // ==== GAME RUNNING ====
-        for (int i = 0; i < 2; i++) {
-            canvas.drawBitmap(topTube, tubeX[i], tubeY[i], paint);
-            canvas.drawBitmap(bottomTube, tubeX[i], tubeY[i] + castleHeight + gap, paint);
-
-            tubeX[i] -= castleVelocity;
-
-            if (tubeX[i] + castleWidth < 0) {
-                int other = (i == 0) ? 1 : 0;
-                tubeX[i] = tubeX[other] + tubeSpacing;
-                tubeY[i] = getRandomTubeY();
-                passed[i] = false;
-            }
-
-            if (tubeX[i] + castleWidth < knightX && !passed[i]) {
-                passed[i] = true;
-                score++;
-                tubesPassedCount++;
-
-                if (tubesPassedCount % 5 == 0 && !coinActive) {
-                    spawnCoin();
-                }
-            }
-        }
-
-        if (coinActive) {
-            coinX -= castleVelocity;
-            canvas.drawBitmap(coin, coinX, coinY, paint);
-
-            if (knightX < coinX + coinWidth && knightX + knightWidth > coinX &&
-                    knightY < coinY + coinHeight && knightY + knightHeight > coinY) {
-                score += 5;
-                coinActive = false;
-            }
-
-            if (coinX + coinWidth < 0) {
-                coinActive = false;
-            }
-        }
+        // Game running
+        drawTubes(canvas, true); // MOVE TUBES ONLY WHEN GAME IS RUNNING
+        drawCoins(canvas);
 
         velocity += gravity;
         knightY += velocity;
-
         canvas.drawBitmap(knight, knightX, knightY, paint);
+
         canvas.drawText("Score: " + score, 50, 150, scorePaint);
 
         // Collision detection
         for (int i = 0; i < 2; i++) {
             if (knightX + knightWidth > tubeX[i] && knightX < tubeX[i] + castleWidth) {
-                if (knightY < tubeY[i] + castleHeight ||
-                        knightY + knightHeight > tubeY[i] + castleHeight + gap) {
+                if (knightY < tubeY[i] + castleHeight || knightY + knightHeight > tubeY[i] + castleHeight + gap) {
                     triggerGameOver();
                     return;
                 }
@@ -263,10 +250,48 @@ public class GameView extends View {
         handler.postDelayed(runnable, delay);
     }
 
-    private void triggerGameOver() {
-        gameRunning = false;
-        if (onGameOverCallback != null) {
-            onGameOverCallback.run();
+    private void drawTubes(Canvas canvas, boolean moveTubes) {
+        for (int i = 0; i < 2; i++) {
+            canvas.drawBitmap(topTube, tubeX[i], tubeY[i], paint);
+            canvas.drawBitmap(bottomTube, tubeX[i], tubeY[i] + castleHeight + gap, paint);
+
+            if (moveTubes) {
+                tubeX[i] -= castleVelocity;
+
+                if (tubeX[i] + castleWidth < 0) {
+                    int other = (i == 0) ? 1 : 0;
+                    tubeX[i] = tubeX[other] + tubeSpacing;
+                    tubeY[i] = getRandomTubeY();
+                    passed[i] = false;
+                }
+
+                if (tubeX[i] + castleWidth < knightX && !passed[i]) {
+                    passed[i] = true;
+                    score++;
+                    tubesPassedCount++;
+
+                    if (tubesPassedCount % 5 == 0 && !coinActive) {
+                        spawnCoin();
+                    }
+                }
+            }
+        }
+    }
+
+    private void drawCoins(Canvas canvas) {
+        if (coinActive) {
+            coinX -= castleVelocity;
+            canvas.drawBitmap(coin, coinX, coinY, paint);
+
+            if (knightX < coinX + coinWidth && knightX + knightWidth > coinX &&
+                    knightY < coinY + coinHeight && knightY + knightHeight > coinY) {
+                score += 5;
+                coinActive = false;
+            }
+
+            if (coinX + coinWidth < 0) {
+                coinActive = false;
+            }
         }
     }
 
@@ -279,6 +304,13 @@ public class GameView extends View {
         int minY = 0;
         int maxY = canvasHeight - coinHeight;
         coinY = random.nextInt(maxY - minY + 1) + minY;
+    }
+
+    private void triggerGameOver() {
+        gameRunning = false;
+        if (onGameOverCallback != null) {
+            onGameOverCallback.run();
+        }
     }
 
     @Override
