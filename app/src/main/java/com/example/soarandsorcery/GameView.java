@@ -77,7 +77,7 @@ public class GameView extends View {
         }
 
         scorePaint = new Paint();
-        scorePaint.setColor(Color.BLACK);
+        scorePaint.setColor(Color.WHITE);
         scorePaint.setTextSize(50);
         scorePaint.setFakeBoldText(true);
 
