@@ -32,23 +32,27 @@
 
         <ImageButton
             android:id="@+id/leftButton"
-            android:src="@android:drawable/ic_media_previous"
+            android:src="@drawable/buttonwifi"
             android:layout_alignParentBottom="true"
             android:layout_alignParentLeft="true"
             android:layout_margin="20dp"
             android:background="@android:color/transparent"
             android:layout_width="70dp"
-            android:layout_height="70dp" />
+            android:layout_height="70dp"
+            android:scaleType="fitXY" />
 
         <ImageButton
             android:id="@+id/rightButton"
-            android:src="@android:drawable/ic_menu_more"
+            android:src="@drawable/buttonlocal"
             android:layout_alignParentBottom="true"
             android:layout_alignParentRight="true"
             android:layout_margin="20dp"
             android:background="@android:color/transparent"
             android:layout_width="70dp"
-            android:layout_height="70dp" />
+            android:layout_height="70dp"
+            android:scaleType="fitXY" />
+
+
     </RelativeLayout>
 
     <!-- GAME AREA -->
@@ -69,4 +73,10 @@
         android:id="@+id/highscoresInclude"
         layout="@layout/highscores_screen"
         android:visibility="gone" />
+
+    <!-- WORLD HIGHSCORES SCREEN -->
+    <include
+        android:id="@+id/worldScoresInclude"
+        layout="@layout/world_score_screen"
+        android:visibility="gone"/>
 </FrameLayout>

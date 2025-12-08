@@ -44,6 +44,11 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout highscoresContainer;
     private Button highscoresReturnButton;
 
+    // World highscores screen
+    private View worldScoresScreen;
+    private LinearLayout worldScoresContainer;
+    private Button worldReturnButton;
+
     private int lastScore = 0;
 
     private static final String PREFS_NAME = "knight_skies_prefs";
@@ -86,10 +91,18 @@ public class MainActivity extends AppCompatActivity {
         highscoresContainer = findViewById(R.id.highscoresContainer);
         highscoresReturnButton = findViewById(R.id.returnButton);
 
+        // World highscores screen
+        worldScoresScreen = findViewById(R.id.worldScoresInclude);
+        worldScoresContainer = findViewById(R.id.worldScoresContainer);
+        worldReturnButton = findViewById(R.id.worldReturnButton);
+
         // Start game
         playButton.setOnClickListener(v -> startGame());
 
-        // Show highscores when right button is pressed
+        // LEFT button → World Scores
+        leftButton.setOnClickListener(v -> showWorldScoresScreen());
+
+        // RIGHT button → Local highscores
         rightButton.setOnClickListener(v -> showHighscoresScreen());
 
         // Letter cycling controls
@@ -106,18 +119,25 @@ public class MainActivity extends AppCompatActivity {
             String name = "" + letter1.getText() + letter2.getText() + letter3.getText();
             addScoreIfTop10(name, lastScore);
 
-            // Back to start screen
             nicknameScreen.setVisibility(View.GONE);
             highscoresScreen.setVisibility(View.GONE);
+            worldScoresScreen.setVisibility(View.GONE);
             gameContainer.setVisibility(View.GONE);
 
             startScreen.setVisibility(View.VISIBLE);
             gameView.resetGame();
         });
 
-        // Return from highscores
+        // Return from local highscores
         highscoresReturnButton.setOnClickListener(v -> {
             highscoresScreen.setVisibility(View.GONE);
+            worldScoresScreen.setVisibility(View.GONE);
+            startScreen.setVisibility(View.VISIBLE);
+        });
+
+        // Return from world highscores
+        worldReturnButton.setOnClickListener(v -> {
+            worldScoresScreen.setVisibility(View.GONE);
             startScreen.setVisibility(View.VISIBLE);
         });
     }
@@ -126,10 +146,10 @@ public class MainActivity extends AppCompatActivity {
         startScreen.setVisibility(View.GONE);
         nicknameScreen.setVisibility(View.GONE);
         highscoresScreen.setVisibility(View.GONE);
+        worldScoresScreen.setVisibility(View.GONE);
 
         gameContainer.setVisibility(View.VISIBLE);
 
-        // Start game with callback
         gameView.startCountdown(score -> runOnUiThread(() -> onGameOver(score)));
     }
 
@@ -142,10 +162,10 @@ public class MainActivity extends AppCompatActivity {
         gameContainer.setVisibility(View.GONE);
         startScreen.setVisibility(View.GONE);
         highscoresScreen.setVisibility(View.GONE);
+        worldScoresScreen.setVisibility(View.GONE);
 
         scoreTitle.setText("Your score: " + score);
 
-        // Reset letters
         letter1.setText("A");
         letter2.setText("A");
         letter3.setText("A");
@@ -157,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
         startScreen.setVisibility(View.GONE);
         nicknameScreen.setVisibility(View.GONE);
         gameContainer.setVisibility(View.GONE);
+        worldScoresScreen.setVisibility(View.GONE);
 
         highscoresContainer.removeAllViews();
         List<ScoreEntry> scores = loadHighscores();
@@ -181,6 +202,37 @@ public class MainActivity extends AppCompatActivity {
         }
 
         highscoresScreen.setVisibility(View.VISIBLE);
+    }
+
+    private void showWorldScoresScreen() {
+        startScreen.setVisibility(View.GONE);
+        nicknameScreen.setVisibility(View.GONE);
+        gameContainer.setVisibility(View.GONE);
+        highscoresScreen.setVisibility(View.GONE);
+
+        worldScoresContainer.removeAllViews();
+        List<ScoreEntry> scores = loadHighscores(); // SAME SOURCE
+
+        if (scores.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("No world scores yet");
+            empty.setTextSize(18);
+            empty.setTextColor(0xFFFFFFFF);
+            worldScoresContainer.addView(empty);
+        } else {
+            int rank = 1;
+            for (ScoreEntry s : scores) {
+                TextView t = new TextView(this);
+                t.setText(rank + ". " + s.name + " - " + s.score);
+                t.setTextSize(18);
+                t.setTextColor(0xFFFFFFFF);
+                t.setPadding(0, 8, 0, 8);
+                worldScoresContainer.addView(t);
+                rank++;
+            }
+        }
+
+        worldScoresScreen.setVisibility(View.VISIBLE);
     }
 
     private void changeLetter(TextView tv, boolean up) {
@@ -234,10 +286,11 @@ public class MainActivity extends AppCompatActivity {
         List<ScoreEntry> list = loadHighscores();
         list.add(new ScoreEntry(name, score));
 
-        // Sort descending
         Collections.sort(list, (a, b) -> Integer.compare(b.score, a.score));
 
-        if (list.size() > 10) list = list.subList(0, 10);
+        if (list.size() > 10) {
+            list = list.subList(0, 10);
+        }
 
         boolean madeTop10 = false;
         for (ScoreEntry e : list) {
