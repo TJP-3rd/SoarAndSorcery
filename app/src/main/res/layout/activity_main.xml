@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootFrame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#3A6EA5">
-
-
-<!--    &lt;!&ndash; Shared background &ndash;&gt;-->
-<!--    <ImageView-->
-<!--        android:id="@+id/bgImage"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="match_parent"-->
-<!--        android:scaleType="centerCrop"-->
-<!--        android:src="@drawable/background" />-->
 
     <!-- START SCREEN -->
     <RelativeLayout
@@ -30,7 +22,6 @@
             android:textSize="36sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF" />
-
 
         <Button
             android:id="@+id/playButton"
@@ -51,7 +42,7 @@
 
         <ImageButton
             android:id="@+id/rightButton"
-            android:src="@android:drawable/ic_media_next"
+            android:src="@android:drawable/ic_menu_more"
             android:layout_alignParentBottom="true"
             android:layout_alignParentRight="true"
             android:layout_margin="20dp"
@@ -64,6 +55,18 @@
     <FrameLayout
         android:id="@+id/gameContainer"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
+    <!-- NICKNAME SCREEN (inflated programmatically) -->
+    <include
+        android:id="@+id/nicknameInclude"
+        layout="@layout/nickname_screen"
+        android:visibility="gone" />
+
+    <!-- HIGHSCORES SCREEN (inflated programmatically) -->
+    <include
+        android:id="@+id/highscoresInclude"
+        layout="@layout/highscores_screen"
+        android:visibility="gone" />
 </FrameLayout>

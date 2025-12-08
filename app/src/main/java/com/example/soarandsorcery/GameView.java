@@ -16,6 +16,11 @@ import java.util.Random;
 
 public class GameView extends View {
 
+    // Interface to send score back to MainActivity
+    public interface OnGameOverListener {
+        void onGameOver(int score);
+    }
+
     private Bitmap knight, topTube, bottomTube, coin;
     private int knightX, knightY, knightWidth, knightHeight;
     private int castleWidth, castleHeight;
@@ -50,7 +55,8 @@ public class GameView extends View {
     private boolean countdownRunning = false;
     private int countdownValue = 3;
     private Paint countdownPaint = new Paint();
-    private Runnable onGameOverCallback;
+
+    private OnGameOverListener onGameOverCallback;
 
     private boolean viewReady = false;
 
@@ -157,7 +163,8 @@ public class GameView extends View {
         return -random.nextInt(maxOffset);
     }
 
-    public void startCountdown(Runnable onGameOver) {
+    // UPDATED: takes a listener instead of Runnable
+    public void startCountdown(OnGameOverListener onGameOver) {
         this.onGameOverCallback = onGameOver;
 
         if (!viewReady) {
@@ -201,7 +208,7 @@ public class GameView extends View {
 
         // Countdown state
         if (countdownRunning) {
-            drawTubes(canvas, false); // DRAW WITHOUT MOVING
+            drawTubes(canvas, false);
             canvas.drawBitmap(knight, knightX, knightY, paint);
 
             canvas.drawText(
@@ -223,7 +230,7 @@ public class GameView extends View {
         }
 
         // Game running
-        drawTubes(canvas, true); // MOVE TUBES ONLY WHEN GAME IS RUNNING
+        drawTubes(canvas, true);
         drawCoins(canvas);
 
         velocity += gravity;
@@ -235,7 +242,8 @@ public class GameView extends View {
         // Collision detection
         for (int i = 0; i < 2; i++) {
             if (knightX + knightWidth > tubeX[i] && knightX < tubeX[i] + castleWidth) {
-                if (knightY < tubeY[i] + castleHeight || knightY + knightHeight > tubeY[i] + castleHeight + gap) {
+                if (knightY < tubeY[i] + castleHeight
+                        || knightY + knightHeight > tubeY[i] + castleHeight + gap) {
                     triggerGameOver();
                     return;
                 }
@@ -308,8 +316,9 @@ public class GameView extends View {
 
     private void triggerGameOver() {
         gameRunning = false;
+
         if (onGameOverCallback != null) {
-            onGameOverCallback.run();
+            onGameOverCallback.onGameOver(score);
         }
     }
 
