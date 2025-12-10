@@ -11,7 +11,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -19,93 +24,68 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
     private FrameLayout gameContainer;
     private GameView gameView;
 
-    // Start screen
-    private View startScreen;
-    private TextView titleText;
-    private Button playButton;
-    private ImageButton leftButton;
-    private ImageButton rightButton;
+    // UI screens
+    private View startScreen, nicknameScreen, highscoresScreen, worldScoresScreen;
 
-    // Nickname screen
-    private View nicknameScreen;
-    private TextView scoreTitle;
-    private TextView letter1, letter2, letter3;
-    private Button up1, up2, up3, down1, down2, down3, confirmButton;
-
-    // Highscores screen
-    private View highscoresScreen;
-    private LinearLayout highscoresContainer;
-    private Button highscoresReturnButton;
-
-    // World highscores screen
-    private View worldScoresScreen;
-    private LinearLayout worldScoresContainer;
-    private Button worldReturnButton;
+    private LinearLayout highscoresContainer, worldScoresContainer;
+    private TextView scoreTitle, letter1, letter2, letter3;
 
     private int lastScore = 0;
 
     private static final String PREFS_NAME = "knight_skies_prefs";
     private static final String KEY_HIGHSCORES = "highscores";
 
+    // ✅ Firestore
+    private FirebaseFirestore db;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Start screen
-        startScreen = findViewById(R.id.startScreen);
-        titleText = findViewById(R.id.titleText);
-        playButton = findViewById(R.id.playButton);
-        leftButton = findViewById(R.id.leftButton);
-        rightButton = findViewById(R.id.rightButton);
+        db = FirebaseFirestore.getInstance();
 
-        // Game container
         gameContainer = findViewById(R.id.gameContainer);
         gameView = new GameView(this);
         gameContainer.addView(gameView);
         gameContainer.setVisibility(View.GONE);
 
-        // Nickname screen
+        // Views
+        startScreen = findViewById(R.id.startScreen);
         nicknameScreen = findViewById(R.id.nicknameInclude);
+        highscoresScreen = findViewById(R.id.highscoresInclude);
+        worldScoresScreen = findViewById(R.id.worldScoresInclude);
+
+        highscoresContainer = findViewById(R.id.highscoresContainer);
+        worldScoresContainer = findViewById(R.id.worldScoresContainer);
+
         scoreTitle = findViewById(R.id.scoreTitle);
         letter1 = findViewById(R.id.letter1);
         letter2 = findViewById(R.id.letter2);
         letter3 = findViewById(R.id.letter3);
-        up1 = findViewById(R.id.up1);
-        up2 = findViewById(R.id.up2);
-        up3 = findViewById(R.id.up3);
-        down1 = findViewById(R.id.down1);
-        down2 = findViewById(R.id.down2);
-        down3 = findViewById(R.id.down3);
-        confirmButton = findViewById(R.id.confirmButton);
 
-        // Highscores screen
-        highscoresScreen = findViewById(R.id.highscoresInclude);
-        highscoresContainer = findViewById(R.id.highscoresContainer);
-        highscoresReturnButton = findViewById(R.id.returnButton);
+        Button playButton = findViewById(R.id.playButton);
+        ImageButton leftButton = findViewById(R.id.leftButton);
+        ImageButton rightButton = findViewById(R.id.rightButton);
 
-        // World highscores screen
-        worldScoresScreen = findViewById(R.id.worldScoresInclude);
-        worldScoresContainer = findViewById(R.id.worldScoresContainer);
-        worldReturnButton = findViewById(R.id.worldReturnButton);
+        Button confirmButton = findViewById(R.id.confirmButton);
+        Button up1 = findViewById(R.id.up1);
+        Button up2 = findViewById(R.id.up2);
+        Button up3 = findViewById(R.id.up3);
 
-        // Start game
-        playButton.setOnClickListener(v -> startGame());
+        Button down1 = findViewById(R.id.down1);
+        Button down2 = findViewById(R.id.down2);
+        Button down3 = findViewById(R.id.down3);
 
-        // LEFT button → World Scores
-        leftButton.setOnClickListener(v -> showWorldScoresScreen());
-
-        // RIGHT button → Local highscores
-        rightButton.setOnClickListener(v -> showHighscoresScreen());
-
-        // Letter cycling controls
         up1.setOnClickListener(v -> changeLetter(letter1, true));
         up2.setOnClickListener(v -> changeLetter(letter2, true));
         up3.setOnClickListener(v -> changeLetter(letter3, true));
@@ -114,40 +94,42 @@ public class MainActivity extends AppCompatActivity {
         down2.setOnClickListener(v -> changeLetter(letter2, false));
         down3.setOnClickListener(v -> changeLetter(letter3, false));
 
-        // Confirm nickname + score
+
+        Button worldReturnButton = findViewById(R.id.worldReturnButton);
+        Button highscoresReturnButton = findViewById(R.id.returnButton);
+
+        // Start game
+        playButton.setOnClickListener(v -> startGame());
+
+        // World / Local
+        leftButton.setOnClickListener(v -> showWorldScoresScreen());
+        rightButton.setOnClickListener(v -> showHighscoresScreen());
+
+        // Save score
         confirmButton.setOnClickListener(v -> {
             String name = "" + letter1.getText() + letter2.getText() + letter3.getText();
-            addScoreIfTop10(name, lastScore);
+
+            addScoreIfTop10(name, lastScore);        // Local
+            checkAndUploadWorldScore(name, lastScore); // Firestore
 
             nicknameScreen.setVisibility(View.GONE);
-            highscoresScreen.setVisibility(View.GONE);
-            worldScoresScreen.setVisibility(View.GONE);
-            gameContainer.setVisibility(View.GONE);
-
             startScreen.setVisibility(View.VISIBLE);
             gameView.resetGame();
         });
 
-        // Return from local highscores
-        highscoresReturnButton.setOnClickListener(v -> {
-            highscoresScreen.setVisibility(View.GONE);
+        worldReturnButton.setOnClickListener(v -> {
             worldScoresScreen.setVisibility(View.GONE);
             startScreen.setVisibility(View.VISIBLE);
         });
 
-        // Return from world highscores
-        worldReturnButton.setOnClickListener(v -> {
-            worldScoresScreen.setVisibility(View.GONE);
+        highscoresReturnButton.setOnClickListener(v -> {
+            highscoresScreen.setVisibility(View.GONE);
             startScreen.setVisibility(View.VISIBLE);
         });
     }
 
     private void startGame() {
         startScreen.setVisibility(View.GONE);
-        nicknameScreen.setVisibility(View.GONE);
-        highscoresScreen.setVisibility(View.GONE);
-        worldScoresScreen.setVisibility(View.GONE);
-
         gameContainer.setVisibility(View.VISIBLE);
 
         gameView.startCountdown(score -> runOnUiThread(() -> onGameOver(score)));
@@ -160,10 +142,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void showNicknameScreen(int score) {
         gameContainer.setVisibility(View.GONE);
-        startScreen.setVisibility(View.GONE);
-        highscoresScreen.setVisibility(View.GONE);
-        worldScoresScreen.setVisibility(View.GONE);
-
         scoreTitle.setText("Your score: " + score);
 
         letter1.setText("A");
@@ -171,68 +149,6 @@ public class MainActivity extends AppCompatActivity {
         letter3.setText("A");
 
         nicknameScreen.setVisibility(View.VISIBLE);
-    }
-
-    private void showHighscoresScreen() {
-        startScreen.setVisibility(View.GONE);
-        nicknameScreen.setVisibility(View.GONE);
-        gameContainer.setVisibility(View.GONE);
-        worldScoresScreen.setVisibility(View.GONE);
-
-        highscoresContainer.removeAllViews();
-        List<ScoreEntry> scores = loadHighscores();
-
-        if (scores.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("No highscores yet");
-            empty.setTextSize(18);
-            empty.setTextColor(0xFFFFFFFF);
-            highscoresContainer.addView(empty);
-        } else {
-            int rank = 1;
-            for (ScoreEntry s : scores) {
-                TextView t = new TextView(this);
-                t.setText(rank + ". " + s.name + " - " + s.score);
-                t.setTextSize(18);
-                t.setTextColor(0xFFFFFFFF);
-                t.setPadding(0, 8, 0, 8);
-                highscoresContainer.addView(t);
-                rank++;
-            }
-        }
-
-        highscoresScreen.setVisibility(View.VISIBLE);
-    }
-
-    private void showWorldScoresScreen() {
-        startScreen.setVisibility(View.GONE);
-        nicknameScreen.setVisibility(View.GONE);
-        gameContainer.setVisibility(View.GONE);
-        highscoresScreen.setVisibility(View.GONE);
-
-        worldScoresContainer.removeAllViews();
-        List<ScoreEntry> scores = loadHighscores(); // SAME SOURCE
-
-        if (scores.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("No world scores yet");
-            empty.setTextSize(18);
-            empty.setTextColor(0xFFFFFFFF);
-            worldScoresContainer.addView(empty);
-        } else {
-            int rank = 1;
-            for (ScoreEntry s : scores) {
-                TextView t = new TextView(this);
-                t.setText(rank + ". " + s.name + " - " + s.score);
-                t.setTextSize(18);
-                t.setTextColor(0xFFFFFFFF);
-                t.setPadding(0, 8, 0, 8);
-                worldScoresContainer.addView(t);
-                rank++;
-            }
-        }
-
-        worldScoresScreen.setVisibility(View.VISIBLE);
     }
 
     private void changeLetter(TextView tv, boolean up) {
@@ -245,11 +161,83 @@ public class MainActivity extends AppCompatActivity {
         tv.setText(String.valueOf(c));
     }
 
+
+    // ---------- LOCAL HIGHSCORES ----------
+    private void showHighscoresScreen() {
+        highscoresContainer.removeAllViews();
+        List<ScoreEntry> scores = loadHighscores();
+
+        for (int i = 0; i < scores.size(); i++) {
+            TextView t = new TextView(this);
+            t.setText((i + 1) + ". " + scores.get(i).name + " - " + scores.get(i).score);
+            t.setTextSize(22);
+            t.setTextColor(0xFFFFFFFF);
+            t.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+            highscoresContainer.addView(t);
+        }
+
+        highscoresScreen.setVisibility(View.VISIBLE);
+    }
+
+    // ---------- WORLD FIREBASE SCORES ----------
+    private void showWorldScoresScreen() {
+        worldScoresContainer.removeAllViews();
+
+        db.collection("world_highscores")
+                .orderBy("score", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(10)
+                .get()
+                .addOnSuccessListener(query -> {
+                    int rank = 1;
+                    for (QueryDocumentSnapshot doc : query) {
+                        String name = doc.getString("name");
+                        Long score = doc.getLong("score");
+
+                        TextView t = new TextView(this);
+                        t.setText(rank + ". " + name + " - " + score);
+                        t.setTextSize(22);
+                        t.setTextColor(0xFFFFFFFF);
+                        t.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+                        worldScoresContainer.addView(t);
+                        rank++;
+                    }
+                });
+
+        worldScoresScreen.setVisibility(View.VISIBLE);
+    }
+
+    // ---------- FIREBASE TOP-10 CHECK ----------
+    private void checkAndUploadWorldScore(String name, int score) {
+        db.collection("world_highscores")
+                .orderBy("score", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(10)
+                .get()
+                .addOnSuccessListener(query -> {
+                    int lowest = 0;
+
+                    List<com.google.firebase.firestore.DocumentSnapshot> docs = query.getDocuments();
+
+                    if (docs.size() == 10) {
+                        lowest = docs.get(9).getLong("score").intValue();
+                    }
+
+                    if (docs.size() < 10 || score > lowest) {
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("name", name);
+                        entry.put("score", score);
+
+                        db.collection("world_highscores").add(entry);
+                        Toast.makeText(this, "World highscore updated!", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    // ---------- LOCAL STORAGE ----------
     private List<ScoreEntry> loadHighscores() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(KEY_HIGHSCORES, null);
-
         List<ScoreEntry> list = new ArrayList<>();
+
         if (json == null) return list;
 
         try {
@@ -267,6 +255,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void saveHighscores(List<ScoreEntry> list) {
         JSONArray arr = new JSONArray();
+
         try {
             for (ScoreEntry e : list) {
                 JSONObject o = new JSONObject();
@@ -285,27 +274,11 @@ public class MainActivity extends AppCompatActivity {
     private void addScoreIfTop10(String name, int score) {
         List<ScoreEntry> list = loadHighscores();
         list.add(new ScoreEntry(name, score));
-
         Collections.sort(list, (a, b) -> Integer.compare(b.score, a.score));
 
-        if (list.size() > 10) {
-            list = list.subList(0, 10);
-        }
+        if (list.size() > 10) list = list.subList(0, 10);
 
-        boolean madeTop10 = false;
-        for (ScoreEntry e : list) {
-            if (e.name.equals(name) && e.score == score) {
-                madeTop10 = true;
-                break;
-            }
-        }
-
-        if (madeTop10) {
-            saveHighscores(list);
-            Toast.makeText(this, "Highscore saved!", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Not in top 10", Toast.LENGTH_SHORT).show();
-        }
+        saveHighscores(list);
     }
 
     private static class ScoreEntry {

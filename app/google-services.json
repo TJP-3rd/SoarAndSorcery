@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "25686467184",
-    "project_id": "soarandsorcery",
-    "storage_bucket": "soarandsorcery.firebasestorage.app"
+    "project_number": "723064026894",
+    "project_id": "soar-and-sorcery",
+    "storage_bucket": "soar-and-sorcery.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:25686467184:android:868c9e77c9acb7b7fccab5",
+        "mobilesdk_app_id": "1:723064026894:android:858e68504436a6e225095f",
         "android_client_info": {
           "package_name": "com.example.soarandsorcery"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCTRqQ6-nfnO2FJf5Ed-Hvw-HaaDdDf5qY"
+          "current_key": "AIzaSyASLfNSxeFljtVbSvfufLBoGe4YangCYL8"
         }
       ],
       "services": {
