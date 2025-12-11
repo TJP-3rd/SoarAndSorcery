@@ -137,8 +137,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void onGameOver(int score) {
         lastScore = score;
-        showNicknameScreen(score);
+
+        GameOverDialog dialog = new GameOverDialog(() -> {
+            runOnUiThread(() -> showNicknameScreen(score));
+        });
+
+        dialog.setCancelable(false);
+        dialog.show(getSupportFragmentManager(), "GameOverDialog");
     }
+
 
     private void showNicknameScreen(int score) {
         gameContainer.setVisibility(View.GONE);
